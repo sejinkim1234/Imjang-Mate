@@ -99,8 +99,7 @@ export function ChecklistPage() {
     }
   }, [currentEditingId]);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
+
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemType, setNewItemType] = useState<ItemType>('star-text');
   const [newItemCategory, setNewItemCategory] = useState<ItemCategory>('단지 외부 (입지)');

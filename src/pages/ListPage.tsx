@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePropertyStore } from '../store/usePropertyStore';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Download, Building, Edit3, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, Cell } from 'recharts';
+import { Download, Building, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
 export function ListPage() {
   const navigate = useNavigate();
@@ -183,7 +183,7 @@ export function ListPage() {
                   navigate('/checklist');
                 }}
                 className="glass-panel" 
-                style={{ cursor: 'pointer', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', borderLeft: p.isFavorite ? '4px solid var(--status-favorite)' : '4px solid var(--border-color)', transition: 'transform 0.2s', ':hover': { transform: 'translateY(-2px)' } as any }}
+                style={{ cursor: 'pointer', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', borderLeft: p.isFavorite ? '4px solid var(--status-favorite)' : '4px solid var(--border-color)', transition: 'transform 0.2s' }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
