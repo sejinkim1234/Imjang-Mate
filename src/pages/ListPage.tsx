@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePropertyStore } from '../store/usePropertyStore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, Cell } from 'recharts';
 import { Download, Building, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+// Build trigger
 
 export function ListPage() {
   const navigate = useNavigate();
