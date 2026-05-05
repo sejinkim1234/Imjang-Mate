@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePropertyStore } from '../store/usePropertyStore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Download, Building, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 // Build trigger
 
@@ -40,9 +40,6 @@ export function ListPage() {
     // 종합 점수(total) 기준으로 내림차순 정렬 (1등이 맨 위로 오게)
     return data.sort((a, b) => b.total - a.total);
   }, [properties]);
-
-  // 그래프 색상 팔레트
-  const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
 
   const handleExportCSV = () => {
     if (properties.length === 0) {
