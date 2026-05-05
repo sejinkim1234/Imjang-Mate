@@ -25,7 +25,7 @@ export function LoginPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', padding: '20px', background: 'var(--bg-primary)' }}>
       <div className="glass-panel animate-fade-in" style={{ padding: '2.5rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-        <h1 className="text-gradient" style={{ marginBottom: '1rem', fontSize: '2rem' }}>Antigravity</h1>
+        <h1 className="text-gradient" style={{ marginBottom: '1rem', fontSize: '2rem' }}>임장메이트</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem', fontSize: '0.95rem' }}>
           가족과 함께 임장 기록을 실시간으로 공유해보세요.
         </p>
