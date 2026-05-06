@@ -1,21 +1,33 @@
 import { usePropertyStore } from '../store/usePropertyStore';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Map, MapMarker } from 'react-kakao-maps-sdk';
 import { useNavigate } from 'react-router-dom';
 import { Edit3, Trash2 } from 'lucide-react';
 
-// Leaflet 기본 마커 아이콘 수정
-import L from 'leaflet';
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+const getPropertyStatus = (p: any) => {
+  let isFullyRecorded = false;
+  let isPartiallyRecorded = false;
+  if (p.checklist && p.checklist.length > 0) {
+    const starItems = p.checklist.filter((i: any) => i.type === 'star-text');
+    const unrecordedStars = starItems.filter((i: any) => i.score === 0);
+    if (unrecordedStars.length === 0 && starItems.length > 0) {
+      isFullyRecorded = true;
+    } else if (unrecordedStars.length < starItems.length) {
+      isPartiallyRecorded = true;
+    }
+  }
+  const text = isFullyRecorded ? '기록 완료' : (isPartiallyRecorded ? '기록 중' : '미방문');
+  const bg = isFullyRecorded ? 'var(--status-good)' : (isPartiallyRecorded ? 'var(--status-warning)' : 'var(--border-color)');
+  const color = isFullyRecorded || isPartiallyRecorded ? 'white' : 'var(--text-secondary)';
+  return { text, bg, color };
+};
 
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+const getDisplayAddress = (addr: string) => {
+  if (!addr) return '-';
+  const words = addr.split(/[\s()]+/);
+  const gu = words.find(w => w.endsWith('구'));
+  const dong = words.find(w => w.endsWith('동'));
+  return (gu && dong) ? `${gu} ${dong}` : addr.split(' ').slice(1, 3).join(' ') || '-';
+};
 
 export function MapPage() {
   const navigate = useNavigate();
@@ -29,37 +41,30 @@ export function MapPage() {
       
       {/* 지도 영역 */}
       <div style={{ height: '40vh', minHeight: '300px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: 'var(--glass-shadow)', marginBottom: '1.5rem', zIndex: 1 }}>
-        <MapContainer 
-          center={[
-            properties.length > 0 ? properties[0].location.lat : 37.5665,
-            properties.length > 0 ? properties[0].location.lng : 126.9780
-          ]} 
-          zoom={13} 
+        <Map
+          center={{
+            lat: properties.length > 0 ? properties[0].location.lat : 37.5665,
+            lng: properties.length > 0 ? properties[0].location.lng : 126.9780,
+          }}
           style={{ width: '100%', height: '100%' }}
+          level={5}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {properties.map(p => (
-            <Marker 
-              key={p.id} 
-              position={[p.location.lat, p.location.lng]}
-              eventHandlers={{
-                click: () => {
-                  setCurrentEditingId(p.id);
-                  navigate('/checklist');
-                }
+          {properties.map((p) => (
+            <MapMarker
+              key={p.id}
+              position={{ lat: p.location.lat, lng: p.location.lng }}
+              onClick={() => {
+                setCurrentEditingId(p.id);
+                navigate('/checklist');
               }}
             >
-              <Popup>
-                <strong>{p.name}</strong><br/>
-                {p.type} / {p.totalHouseholds}세대<br/>
-                <span style={{ fontSize: '0.8rem', color: '#3b82f6' }}>클릭 시 체크리스트로 이동</span>
-              </Popup>
-            </Marker>
+              <div style={{ padding: '5px', color: '#000', fontSize: '12px' }}>
+                <strong style={{ display: 'block', marginBottom: '2px' }}>{p.name}</strong>
+                {p.type} / {p.totalHouseholds}세대
+              </div>
+            </MapMarker>
           ))}
-        </MapContainer>
+        </Map>
       </div>
       
       {/* 리스트 영역 */}
@@ -75,15 +80,15 @@ export function MapPage() {
             className="glass-panel" 
             style={{ cursor: 'pointer', padding: '1rem', marginBottom: '1rem', transition: 'transform 0.2s' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
                 <strong style={{ fontSize: '1.1rem' }}>{p.name}</strong>
+                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', padding: '2px 6px', background: getPropertyStatus(p).bg, color: getPropertyStatus(p).color, borderRadius: '6px' }}>
+                  {getPropertyStatus(p).text}
+                </span>
                 {p.isFavorite && <span style={{ color: 'var(--status-favorite)', fontSize: '1.2rem' }}>❤️</span>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.75rem', padding: '4px 8px', background: p.status === 'recorded' ? 'var(--status-good)' : 'var(--border-color)', color: p.status === 'recorded' ? 'white' : 'var(--text-secondary)', borderRadius: '8px' }}>
-                  {p.status === 'recorded' ? '기록 완료' : '미방문'}
-                </span>
                 <Edit3 size={16} color="var(--text-secondary)" />
                 <button 
                   onClick={(e) => { 
@@ -98,15 +103,24 @@ export function MapPage() {
                 </button>
               </div>
             </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>{p.address}</p>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
-              <span style={{ fontSize: '0.75rem', padding: '4px 8px', background: 'var(--bg-primary)', borderRadius: '8px' }}>{p.type}</span>
-              <span style={{ fontSize: '0.75rem', padding: '4px 8px', background: 'var(--bg-primary)', borderRadius: '8px' }}>{p.totalHouseholds}세대</span>
-              {p.parkingSpots && p.totalHouseholds ? (
-                <span style={{ fontSize: '0.75rem', padding: '4px 8px', background: 'var(--bg-primary)', borderRadius: '8px' }}>
-                  세대당 {(p.parkingSpots / p.totalHouseholds).toFixed(2)}대
-                </span>
-              ) : null}
+            
+            <div style={{ display: 'flex', gap: '0.8rem', fontSize: '0.85rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '8px', flex: 1, minWidth: '70px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginBottom: '2px' }}>주소</span>
+                <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getDisplayAddress(p.address)}</strong>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '8px', flex: 1, minWidth: '70px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginBottom: '2px' }}>연식</span>
+                <strong>{p.builtYear ? `${p.builtYear}년` : '-'}</strong>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '8px', flex: 1, minWidth: '70px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginBottom: '2px' }}>세대수</span>
+                <strong>{p.totalHouseholds ? `${p.totalHouseholds}세대` : '-'}</strong>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '8px', flex: 1, minWidth: '70px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginBottom: '2px' }}>세대당 주차</span>
+                <strong>{p.parkingSpots && p.totalHouseholds ? `${(p.parkingSpots / p.totalHouseholds).toFixed(2)}대` : '-'}</strong>
+              </div>
             </div>
           </div>
         ))}

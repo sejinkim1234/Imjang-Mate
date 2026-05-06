@@ -62,8 +62,7 @@ export function ChecklistPage() {
   const currentEditingId = usePropertyStore((state) => state.currentEditingId);
   const setCurrentEditingId = usePropertyStore((state) => state.setCurrentEditingId);
   
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(currentEditingId || '');
-  const [showNewForm, setShowNewForm] = useState(false);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(currentEditingId || 'new');
   const [newName, setNewName] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [newBuiltYear, setNewBuiltYear] = useState('');
@@ -86,7 +85,7 @@ export function ChecklistPage() {
         setItems(DEFAULT_ITEMS); // 기록이 없으면 기본값
       }
       setCurrentEditingId(selectedPropertyId);
-    } else if (selectedPropertyId === 'custom') {
+    } else if (selectedPropertyId === 'custom' || selectedPropertyId === 'new') {
       setItems(DEFAULT_ITEMS);
       setCurrentEditingId(null);
     }
@@ -229,26 +228,60 @@ export function ChecklistPage() {
     );
   };
 
-  const handleGetCoordsFromAddress = async () => {
+  const handleGetCoordsFromAddress = () => {
     if (!newAddress.trim()) {
       alert('주소를 먼저 입력해주세요!');
       return;
     }
     setGpsLoading(true);
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newAddress)}`);
-      const data = await response.json();
-      
-      if (data && data.length > 0) {
-        setNewLat(parseFloat(data[0].lat).toFixed(6));
-        setNewLng(parseFloat(data[0].lon).toFixed(6)); // OSM returns 'lon'
-        setGpsLoading(false);
-      } else {
-        alert('해당 주소의 위치를 찾을 수 없습니다. (예: 서울특별시 송파구 잠실동 19)');
-        setGpsLoading(false);
-      }
-    } catch (e) {
-      alert('주소 검색 중 오류가 발생했습니다.');
+    
+    const kakao = (window as any).kakao;
+    if (kakao && kakao.maps && kakao.maps.services) {
+      const geocoder = new kakao.maps.services.Geocoder();
+      geocoder.addressSearch(newAddress, (result: any, status: any) => {
+        if (status === kakao.maps.services.Status.OK) {
+          setNewLat(parseFloat(result[0].y).toFixed(6));
+          setNewLng(parseFloat(result[0].x).toFixed(6));
+          setGpsLoading(false);
+        } else {
+          alert('해당 주소의 위치를 찾을 수 없습니다. (예: 서울특별시 송파구 잠실동 19)');
+          setGpsLoading(false);
+        }
+      });
+    } else {
+      alert('지도 서비스가 로드되지 않았습니다. 새로고침 후 다시 시도해주세요.');
+      setGpsLoading(false);
+    }
+  };
+
+  const handleUpdatePropertyCoords = () => {
+    const property = properties.find(p => p.id === selectedPropertyId);
+    if (!property || !property.address) {
+      alert('주소를 먼저 입력해주세요!');
+      return;
+    }
+    
+    setGpsLoading(true);
+    
+    const kakao = (window as any).kakao;
+    if (kakao && kakao.maps && kakao.maps.services) {
+      const geocoder = new kakao.maps.services.Geocoder();
+      geocoder.addressSearch(property.address, (result: any, status: any) => {
+        if (status === kakao.maps.services.Status.OK) {
+          const newLat = parseFloat(result[0].y);
+          const newLng = parseFloat(result[0].x);
+          usePropertyStore.getState().updateProperty(selectedPropertyId, {
+            location: { lat: newLat, lng: newLng }
+          });
+          alert('📍 새 주소의 지도 좌표가 업데이트되었습니다.');
+          setGpsLoading(false);
+        } else {
+          alert('해당 주소의 위치를 찾을 수 없습니다. 정확한 주소를 입력해주세요.');
+          setGpsLoading(false);
+        }
+      });
+    } else {
+      alert('지도 서비스가 로드되지 않았습니다. 새로고침 후 다시 시도해주세요.');
       setGpsLoading(false);
     }
   };
@@ -271,7 +304,6 @@ export function ChecklistPage() {
     };
     usePropertyStore.getState().addProperty(newProperty as any);
     setSelectedPropertyId(newPropertyId);
-    setShowNewForm(false);
     setNewName(''); setNewAddress(''); setNewBuiltYear(''); setNewHouseholds(''); setNewParking(''); setNewLat(''); setNewLng('');
     alert(`[${newName}] 단지가 등록되었습니다!`);
   };
@@ -307,21 +339,13 @@ export function ChecklistPage() {
           onChange={(e) => setSelectedPropertyId(e.target.value)}
           style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem' }}
         >
-          <option value="">기록할 단지를 선택하세요</option>
+          <option value="new">➕ 새로운 단지 등록</option>
           {properties.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
 
-        <button 
-          onClick={() => setShowNewForm(!showNewForm)} 
-          className="btn" 
-          style={{ width: '100%', padding: '12px', background: showNewForm ? 'var(--status-bad)' : 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-        >
-          {showNewForm ? <><X size={18}/> 등록 취소</> : <><Plus size={18}/> 새 단지 등록</>}
-        </button>
-
-        {showNewForm && (
+        {selectedPropertyId === 'new' && (
           <div style={{ padding: '1rem', background: 'var(--bg-primary)', borderRadius: '8px', border: '2px solid var(--accent-primary)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             <h4 style={{ color: 'var(--accent-primary)', margin: 0 }}>📝 새 단지 정보 입력</h4>
             <input type="text" placeholder="아파트 이름 *" value={newName} onChange={e => setNewName(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem' }} />
@@ -350,10 +374,33 @@ export function ChecklistPage() {
         )}
 
         {/* 단지 기본 정보 및 임장 날짜 수정 폼 */}
-        {selectedPropertyId && selectedPropertyId !== 'custom' && (
+        {selectedPropertyId && selectedPropertyId !== 'custom' && selectedPropertyId !== 'new' && (
           <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <h4 style={{ fontSize: '0.95rem', marginBottom: '0.8rem', color: 'var(--text-secondary)' }}>단지 기본 정보 수정</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>아파트 이름</label>
+                <input 
+                  type="text" 
+                  value={properties.find(p => p.id === selectedPropertyId)?.name || ''} 
+                  onChange={(e) => usePropertyStore.getState().updateProperty(selectedPropertyId, { name: e.target.value })} 
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} 
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>주소</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input 
+                    type="text" 
+                    value={properties.find(p => p.id === selectedPropertyId)?.address || ''} 
+                    onChange={(e) => usePropertyStore.getState().updateProperty(selectedPropertyId, { address: e.target.value })} 
+                    style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }} 
+                  />
+                  <button onClick={handleUpdatePropertyCoords} disabled={gpsLoading} className="btn" style={{ padding: '0 12px', background: 'var(--bg-secondary)', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                    <MapPin size={14}/> 좌표 찾기
+                  </button>
+                </div>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>임장 날짜</label>
                 <input 
